@@ -5,24 +5,32 @@ type GridTableSidebarProps = {
   canAdd: boolean;
   labelText: string;
   typeText: FieldType;
+  importJsonText: string;
+  importError: string | null;
   onLabelTextChange: (value: string) => void;
   onTypeTextChange: (value: FieldType) => void;
+  onImportJsonTextChange: (value: string) => void;
   onAddField: () => void;
   onAddLabel: () => void;
   onAddRow: () => void;
   onGenerateJson: () => void;
+  onLoadJson: () => void;
 };
 
 export function GridTableSidebar({
   canAdd,
   labelText,
   typeText,
+  importJsonText,
+  importError,
   onLabelTextChange,
   onTypeTextChange,
+  onImportJsonTextChange,
   onAddField,
   onAddLabel,
   onAddRow,
   onGenerateJson,
+  onLoadJson,
 }: GridTableSidebarProps) {
   return (
     <aside className="rounded-2xl border border-slate-300 bg-slate-50 p-6 shadow-sm">
@@ -109,6 +117,31 @@ export function GridTableSidebar({
             className="mt-4 w-full rounded-xl bg-cyan-700 px-4 py-3 text-sm font-medium text-white hover:bg-cyan-800"
           >
             Generar JSON
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-slate-300 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Importacion</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Pega un JSON valido del constructor para reconstruir la tablilla.
+          </p>
+          <textarea
+            value={importJsonText}
+            onChange={(event) => onImportJsonTextChange(event.target.value)}
+            className="mt-4 min-h-52 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 font-mono text-xs text-slate-700 outline-none focus:border-cyan-700"
+            placeholder='{"grid":{"cols":12,"rows":12},"items":[]}'
+          />
+          {importError && (
+            <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {importError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={onLoadJson}
+            className="mt-4 w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white hover:bg-slate-900"
+          >
+            Cargar JSON en la tablilla
           </button>
         </div>
       </div>

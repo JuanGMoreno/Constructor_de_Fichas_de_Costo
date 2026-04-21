@@ -28,6 +28,8 @@ export default function GridTableBuilder() {
   const [items, setItems] = useState<Record<string, FieldItem>>({});
   const [rowDrafts, setRowDrafts] = useState<Record<string, RowFieldDraft>>({});
   const [jsonPreview, setJsonPreview] = useState("");
+  const [importJsonText, setImportJsonText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
   const [openRowEditorId, setOpenRowEditorId] = useState<string | null>(null);
   const { width, mounted, containerRef } = useContainerWidth({
     initialWidth: 980,
@@ -42,7 +44,7 @@ export default function GridTableBuilder() {
         cols: GRID_COLUMNS,
         rows: GRID_ROWS,
       },
-      // The exported JSON mirrors the visual order of the grid.
+      // El JSON exportado respeta el orden visual del grid.
       items: orderedLayout
         .map((slot) => {
           const source = items[slot.i];
@@ -203,7 +205,130 @@ export default function GridTableBuilder() {
   };
 
   const saveJson = () => {
-    setJsonPreview(JSON.stringify(structure, null, 2));
+    const payload = JSON.stringify(structure, null, 2);
+    setJsonPreview(payload);
+    // Se copia el JSON exportado en el area de importacion para poder editarlo y recargarlo rapido.
+    setImportJsonText(payload);
+    setImportError(null);
+  };
+
+  const loadStructure = (nextStructure: SavedStructure) => {
+    // La libreria del grid necesita un arreglo `layout`.
+    // Aqui se reconstruye a partir del JSON importado sin perder las restricciones base de cada bloque.
+    const nextLayout: Layout = nextStructure.items.map((item) => {
+      if (item.kind === "row") {
+        const base = buildRowLayout(item.id);
+        return { ...base, x: item.x, y: item.y, w: item.w, h: item.h };
+      }
+
+      if (item.kind === "label") {
+        const base = buildLabelLayout(item.id);
+        return { ...base, x: item.x, y: item.y, w: item.w, h: item.h };
+      }
+
+      const base = buildSingleFieldLayout(item.id);
+      return { ...base, x: item.x, y: item.y, w: item.w, h: item.h };
+    });
+
+    // `items` guarda el contenido semantico de los bloques.
+    // `rowDrafts` es un estado auxiliar usado solo por el editor inline de filas.
+    const nextItems: Record<string, FieldItem> = {};
+    const nextRowDrafts: Record<string, RowFieldDraft> = {};
+
+    nextStructure.items.forEach((item) => {
+      if (item.kind === "label") {
+        nextItems[item.id] = {
+          id: item.id,
+          kind: "label",
+          label: item.label,
+        };
+        return;
+      }
+
+      if (item.kind === "single") {
+        nextItems[item.id] = {
+          id: item.id,
+          kind: "single",
+          label: item.label,
+          type: item.type ?? "text",
+        };
+        return;
+      }
+
+      nextItems[item.id] = {
+        id: item.id,
+        kind: "row",
+        label: item.label,
+        fields: item.fields ?? [],
+      };
+      nextRowDrafts[item.id] = {
+        label: "",
+        type: "text",
+      };
+    });
+
+    setLayout(nextLayout);
+    setItems(nextItems);
+    setRowDrafts(nextRowDrafts);
+    setOpenRowEditorId(null);
+    setJsonPreview(JSON.stringify(nextStructure, null, 2));
+  };
+
+  // La validacion de importacion es simple a proposito:
+  // solo lo necesario para rechazar JSON mal formados antes de renderizar.
+  const isValidFieldType = (value: unknown): value is FieldType => {
+    return ["text", "number", "date", "email", "tel", "list"].includes(String(value));
+  };
+
+  const loadJson = () => {
+    try {
+      const parsed = JSON.parse(importJsonText) as SavedStructure;
+
+      if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items)) {
+        throw new Error("El JSON no tiene la estructura esperada.");
+      }
+
+      parsed.items.forEach((item, index) => {
+        if (!item?.id || !item?.kind || typeof item.label !== "string") {
+          throw new Error(`El elemento ${index + 1} no tiene un formato valido.`);
+        }
+
+        if (!["single", "row", "label"].includes(item.kind)) {
+          throw new Error(`El tipo de bloque del elemento ${index + 1} no es valido.`);
+        }
+
+        if (
+          typeof item.x !== "number" ||
+          typeof item.y !== "number" ||
+          typeof item.w !== "number" ||
+          typeof item.h !== "number"
+        ) {
+          throw new Error(`El elemento ${index + 1} no tiene coordenadas validas.`);
+        }
+
+        if (item.kind === "single" && !isValidFieldType(item.type)) {
+          throw new Error(`El campo simple ${item.label} no tiene un tipo de dato valido.`);
+        }
+
+        if (item.kind === "row" && item.fields) {
+          item.fields.forEach((field, fieldIndex) => {
+            if (!field.id || typeof field.label !== "string" || !isValidFieldType(field.type)) {
+              throw new Error(
+                `El subcampo ${fieldIndex + 1} de la fila ${item.label} no tiene un formato valido.`,
+              );
+            }
+          });
+        }
+      });
+
+      // Una vez validado el JSON, se traduce al estado interno que usa la interfaz.
+      loadStructure(parsed);
+      setImportError(null);
+    } catch (error) {
+      setImportError(
+        error instanceof Error ? error.message : "No se pudo interpretar el JSON indicado.",
+      );
+    }
   };
 
   return (
@@ -214,12 +339,16 @@ export default function GridTableBuilder() {
             canAdd={canAdd}
             labelText={labelText}
             typeText={typeText}
+            importJsonText={importJsonText}
+            importError={importError}
             onLabelTextChange={setLabelText}
             onTypeTextChange={setTypeText}
+            onImportJsonTextChange={setImportJsonText}
             onAddField={addField}
             onAddLabel={addLabelBlock}
             onAddRow={addCompositeRow}
             onGenerateJson={saveJson}
+            onLoadJson={loadJson}
           />
 
           <GridTableCanvas

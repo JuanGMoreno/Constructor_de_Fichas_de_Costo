@@ -15,6 +15,8 @@ export const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; label: string }> = [
   { value: "list", label: "Lista" },
 ];
 
+// Estos helpers definen el comportamiento base de cada tipo de bloque al crearse.
+// Cuando se importa un JSON, se reutilizan estos valores y solo se reemplazan posicion y tamano.
 export function buildSingleFieldLayout(id: string): LayoutItem {
   return {
     i: id,
@@ -55,6 +57,8 @@ export function buildLabelLayout(id: string): LayoutItem {
   };
 }
 
+// El JSON exportado debe ser estable y legible, por eso se ordena por posicion visual
+// y no por el orden en que fueron creados los bloques.
 export function getOrderedLayout(layout: Layout) {
   return [...layout].sort((left, right) => {
     if (left.y !== right.y) return left.y - right.y;

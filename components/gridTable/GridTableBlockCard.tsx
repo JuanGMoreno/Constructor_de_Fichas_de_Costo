@@ -28,6 +28,8 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
   onAddFieldToRow,
   onRemoveRowChild,
 }: GridTableBlockCardProps) {
+  // El constructor solo muestra una vista previa visual del campo final.
+  // `list` necesita un `select`, mientras que el resto puede representarse como inputs.
   const renderFieldPreview = (type: FieldType, compact = false) => {
     const sharedClassName = compact
       ? "no-drag w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600"
@@ -125,6 +127,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
         renderFieldPreview(item.type)
       ) : (
         <div className="flex h-full min-h-0 flex-col">
+          {/* Las filas tienen un editor inline porque sus subcampos forman parte del mismo bloque. */}
           {isRowEditorOpen && (
             <div className="no-drag mb-3 rounded-md border border-cyan-200 bg-cyan-50 p-2">
               <p className="mb-2 text-[11px] font-semibold text-cyan-900">

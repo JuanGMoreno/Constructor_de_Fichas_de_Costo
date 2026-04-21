@@ -80,6 +80,8 @@ export function GridTableCanvas({
             className="min-h-[680px] overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white"
           >
             {layout.map((slot) => {
+              // `layout` guarda la geometria del bloque, mientras `items` guarda su contenido.
+              // Ambos se relacionan mediante el id del bloque (`slot.i`).
               const item = items[slot.i];
               if (!item) return null;
 
