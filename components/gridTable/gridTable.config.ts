@@ -1,0 +1,64 @@
+import type { Layout, LayoutItem } from "react-grid-layout";
+
+import type { FieldType } from "@/components/gridTable/gridTable.types";
+
+export const GRID_COLUMNS = 12;
+export const GRID_ROWS = 12;
+export const GRID_ROW_HEIGHT = 42;
+
+export const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; label: string }> = [
+  { value: "text", label: "Texto" },
+  { value: "number", label: "Numero" },
+  { value: "date", label: "Fecha" },
+  { value: "email", label: "Email" },
+  { value: "tel", label: "Telefono" },
+  { value: "list", label: "Lista" },
+];
+
+export function buildSingleFieldLayout(id: string): LayoutItem {
+  return {
+    i: id,
+    x: 0,
+    y: Infinity,
+    w: 3,
+    h: 2,
+    minW: 2,
+    minH: 2,
+    maxW: GRID_COLUMNS,
+  };
+}
+
+export function buildRowLayout(id: string): LayoutItem {
+  return {
+    i: id,
+    x: 0,
+    y: Infinity,
+    w: GRID_COLUMNS,
+    h: 5,
+    minW: GRID_COLUMNS,
+    minH: 6,
+    maxW: GRID_COLUMNS,
+  };
+}
+
+export function buildLabelLayout(id: string): LayoutItem {
+  return {
+    i: id,
+    x: 0,
+    y: Infinity,
+    w: 4,
+    h: 2,
+    minW: 3,
+    minH: 2,
+    maxW: GRID_COLUMNS,
+    isResizable: true,
+  };
+}
+
+export function getOrderedLayout(layout: Layout) {
+  return [...layout].sort((left, right) => {
+    if (left.y !== right.y) return left.y - right.y;
+    if (left.x !== right.x) return left.x - right.x;
+    return left.i.localeCompare(right.i);
+  });
+}
