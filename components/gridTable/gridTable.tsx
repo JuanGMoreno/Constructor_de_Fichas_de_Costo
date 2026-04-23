@@ -14,12 +14,61 @@ import {
 import { GridTableCanvas } from "@/components/gridTable/GridTableCanvas";
 import { GridTableSidebar } from "@/components/gridTable/GridTableSidebar";
 import type {
+  CalculationConfig,
+  CalculationOperation,
   FieldItem,
+  FieldReferenceOption,
   FieldType,
   RowChildField,
   RowFieldDraft,
   SavedStructure,
 } from "@/components/gridTable/gridTable.types";
+
+function removeSourceReference(
+  items: Record<string, FieldItem>,
+  removedId: string,
+): Record<string, FieldItem> {
+  const nextItems: Record<string, FieldItem> = {};
+
+  Object.values(items).forEach((item) => {
+    if (item.kind === "label") {
+      nextItems[item.id] = item;
+      return;
+    }
+
+    if (item.kind === "single") {
+      nextItems[item.id] = {
+        ...item,
+        calculation: item.calculation
+          ? {
+              ...item.calculation,
+              sourceFieldIds: item.calculation.sourceFieldIds.filter(
+                (sourceId) => sourceId !== removedId,
+              ),
+            }
+          : undefined,
+      };
+      return;
+    }
+
+    nextItems[item.id] = {
+      ...item,
+      fields: item.fields.map((field) => ({
+        ...field,
+        calculation: field.calculation
+          ? {
+              ...field.calculation,
+              sourceFieldIds: field.calculation.sourceFieldIds.filter(
+                (sourceId) => sourceId !== removedId,
+              ),
+            }
+          : undefined,
+      })),
+    };
+  });
+
+  return nextItems;
+}
 
 export default function GridTableBuilder() {
   const [labelText, setLabelText] = useState("");
@@ -31,12 +80,68 @@ export default function GridTableBuilder() {
   const [importJsonText, setImportJsonText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [openRowEditorId, setOpenRowEditorId] = useState<string | null>(null);
+  const [openCalculationTargetId, setOpenCalculationTargetId] = useState<string | null>(null);
   const { width, mounted, containerRef } = useContainerWidth({
     initialWidth: 980,
   });
 
   const canAdd = labelText.trim().length > 0;
   const orderedLayout = useMemo(() => getOrderedLayout(layout), [layout]);
+
+  const fieldReferenceOptions = useMemo<FieldReferenceOption[]>(() => {
+    return orderedLayout.flatMap((slot) => {
+      const item = items[slot.i];
+      if (!item || item.kind === "label") return [];
+
+      if (item.kind === "single") {
+        return [
+          {
+            id: item.id,
+            label: item.label,
+            sourceLabel: "Campo general",
+          },
+        ];
+      }
+
+      return item.fields.map((field) => ({
+        id: field.id,
+        label: field.label,
+        sourceLabel: item.label,
+      }));
+    });
+  }, [items, orderedLayout]);
+
+  const selectedCalculationTarget = useMemo(() => {
+    if (!openCalculationTargetId) return null;
+
+    for (const slot of orderedLayout) {
+      const item = items[slot.i];
+      if (!item || item.kind === "label") continue;
+
+      if (item.kind === "single" && item.id === openCalculationTargetId) {
+        return {
+          id: item.id,
+          label: item.label,
+          contextLabel: "Campo general",
+          calculation: item.calculation,
+        };
+      }
+
+      if (item.kind === "row") {
+        const child = item.fields.find((field) => field.id === openCalculationTargetId);
+        if (child) {
+          return {
+            id: child.id,
+            label: child.label,
+            contextLabel: `Subcampo de ${item.label}`,
+            calculation: child.calculation,
+          };
+        }
+      }
+    }
+
+    return null;
+  }, [items, openCalculationTargetId, orderedLayout]);
 
   const structure = useMemo<SavedStructure>(() => {
     return {
@@ -56,6 +161,7 @@ export default function GridTableBuilder() {
             kind: source.kind,
             type: source.kind === "single" ? source.type : undefined,
             fields: source.kind === "row" ? source.fields : undefined,
+            calculation: source.kind === "single" ? source.calculation : undefined,
             x: slot.x,
             y: slot.y,
             w: slot.w,
@@ -133,7 +239,7 @@ export default function GridTableBuilder() {
     setItems((prev) => {
       const next = { ...prev };
       delete next[id];
-      return next;
+      return removeSourceReference(next, id);
     });
     setRowDrafts((prev) => {
       const next = { ...prev };
@@ -141,10 +247,15 @@ export default function GridTableBuilder() {
       return next;
     });
     setOpenRowEditorId((prev) => (prev === id ? null : prev));
+    setOpenCalculationTargetId((prev) => (prev === id ? null : prev));
   };
 
   const toggleRowEditor = (id: string) => {
     setOpenRowEditorId((prev) => (prev === id ? null : id));
+  };
+
+  const toggleCalculationEditor = (targetId: string) => {
+    setOpenCalculationTargetId((prev) => (prev === targetId ? null : targetId));
   };
 
   const updateRowDraft = (rowId: string, patch: Partial<RowFieldDraft>) => {
@@ -194,14 +305,164 @@ export default function GridTableBuilder() {
       const row = prev[rowId];
       if (!row || row.kind !== "row") return prev;
 
-      return {
+      const nextItems = {
         ...prev,
         [rowId]: {
           ...row,
           fields: row.fields.filter((field) => field.id !== childId),
         },
       };
+
+      return removeSourceReference(nextItems, childId);
     });
+    setOpenCalculationTargetId((prev) => (prev === childId ? null : prev));
+  };
+
+  const updateFieldCalculation = (fieldId: string, calculation?: CalculationConfig) => {
+    setItems((prev) => {
+      const nextItems: Record<string, FieldItem> = {};
+
+      Object.values(prev).forEach((item) => {
+        if (item.kind === "label") {
+          nextItems[item.id] = item;
+          return;
+        }
+
+        if (item.kind === "single") {
+          nextItems[item.id] =
+            item.id === fieldId
+              ? {
+                  ...item,
+                  calculation,
+                }
+              : item;
+          return;
+        }
+
+        nextItems[item.id] = {
+          ...item,
+          fields: item.fields.map((field) =>
+            field.id === fieldId
+              ? {
+                  ...field,
+                  calculation,
+                }
+              : field,
+          ),
+        };
+      });
+
+      return nextItems;
+    });
+  };
+
+  const updateCalculationOperation = (fieldId: string, operation: CalculationOperation) => {
+    const current = fieldReferenceOptions.find((field) => field.id === fieldId);
+    if (!current) return;
+
+    setItems((prev) => {
+      const nextItems: Record<string, FieldItem> = {};
+
+      Object.values(prev).forEach((item) => {
+        if (item.kind === "label") {
+          nextItems[item.id] = item;
+          return;
+        }
+
+        if (item.kind === "single") {
+          nextItems[item.id] =
+            item.id === fieldId
+              ? {
+                  ...item,
+                  calculation: {
+                    operation,
+                    sourceFieldIds: item.calculation?.sourceFieldIds ?? [],
+                  },
+                }
+              : item;
+          return;
+        }
+
+        nextItems[item.id] = {
+          ...item,
+          fields: item.fields.map((field) =>
+            field.id === fieldId
+              ? {
+                  ...field,
+                  calculation: {
+                    operation,
+                    sourceFieldIds: field.calculation?.sourceFieldIds ?? [],
+                  },
+                }
+              : field,
+          ),
+        };
+      });
+
+      return nextItems;
+    });
+  };
+
+  const toggleCalculationSource = (fieldId: string, sourceFieldId: string) => {
+    if (fieldId === sourceFieldId) return;
+
+    setItems((prev) => {
+      const nextItems: Record<string, FieldItem> = {};
+
+      Object.values(prev).forEach((item) => {
+        if (item.kind === "label") {
+          nextItems[item.id] = item;
+          return;
+        }
+
+        if (item.kind === "single") {
+          if (item.id !== fieldId) {
+            nextItems[item.id] = item;
+            return;
+          }
+
+          const currentSourceIds = item.calculation?.sourceFieldIds ?? [];
+          const nextSourceIds = currentSourceIds.includes(sourceFieldId)
+            ? currentSourceIds.filter((id) => id !== sourceFieldId)
+            : [...currentSourceIds, sourceFieldId];
+
+          nextItems[item.id] = {
+            ...item,
+            calculation: {
+              operation: item.calculation?.operation ?? "sum",
+              sourceFieldIds: nextSourceIds,
+            },
+          };
+          return;
+        }
+
+        nextItems[item.id] = {
+          ...item,
+          fields: item.fields.map((field) => {
+            if (field.id !== fieldId) return field;
+
+            const currentSourceIds = field.calculation?.sourceFieldIds ?? [];
+            const nextSourceIds = currentSourceIds.includes(sourceFieldId)
+              ? currentSourceIds.filter((id) => id !== sourceFieldId)
+              : [...currentSourceIds, sourceFieldId];
+
+            return {
+              ...field,
+              calculation: {
+                operation: field.calculation?.operation ?? "sum",
+                sourceFieldIds: nextSourceIds,
+              },
+            };
+          }),
+        };
+      });
+
+      return nextItems;
+    });
+  };
+
+  const clearCalculation = (fieldId: string) => {
+    updateFieldCalculation(fieldId, undefined);
   };
 
   const saveJson = () => {
@@ -251,6 +512,7 @@ export default function GridTableBuilder() {
           kind: "single",
           label: item.label,
           type: item.type ?? "text",
+          calculation: item.calculation,
         };
         return;
       }
@@ -271,6 +533,7 @@ export default function GridTableBuilder() {
     setItems(nextItems);
     setRowDrafts(nextRowDrafts);
     setOpenRowEditorId(null);
+    setOpenCalculationTargetId(null);
     setJsonPreview(JSON.stringify(nextStructure, null, 2));
   };
 
@@ -278,6 +541,23 @@ export default function GridTableBuilder() {
   // solo lo necesario para rechazar JSON mal formados antes de renderizar.
   const isValidFieldType = (value: unknown): value is FieldType => {
     return ["text", "number", "date", "email", "tel", "list"].includes(String(value));
+  };
+
+  const isValidCalculationOperation = (value: unknown): value is CalculationOperation => {
+    return ["sum", "subtract", "multiply", "divide", "average", "percent"].includes(
+      String(value),
+    );
+  };
+
+  const isValidCalculationConfig = (value: unknown): value is CalculationConfig => {
+    if (!value || typeof value !== "object") return false;
+
+    const candidate = value as CalculationConfig;
+    return (
+      isValidCalculationOperation(candidate.operation) &&
+      Array.isArray(candidate.sourceFieldIds) &&
+      candidate.sourceFieldIds.every((entry) => typeof entry === "string")
+    );
   };
 
   const loadJson = () => {
@@ -306,8 +586,14 @@ export default function GridTableBuilder() {
           throw new Error(`El elemento ${index + 1} no tiene coordenadas validas.`);
         }
 
-        if (item.kind === "single" && !isValidFieldType(item.type)) {
-          throw new Error(`El campo simple ${item.label} no tiene un tipo de dato valido.`);
+        if (item.kind === "single") {
+          if (!isValidFieldType(item.type)) {
+            throw new Error(`El campo simple ${item.label} no tiene un tipo de dato valido.`);
+          }
+
+          if (item.calculation && !isValidCalculationConfig(item.calculation)) {
+            throw new Error(`El campo simple ${item.label} tiene una configuracion de calculo invalida.`);
+          }
         }
 
         if (item.kind === "row" && item.fields) {
@@ -315,6 +601,12 @@ export default function GridTableBuilder() {
             if (!field.id || typeof field.label !== "string" || !isValidFieldType(field.type)) {
               throw new Error(
                 `El subcampo ${fieldIndex + 1} de la fila ${item.label} no tiene un formato valido.`,
+              );
+            }
+
+            if (field.calculation && !isValidCalculationConfig(field.calculation)) {
+              throw new Error(
+                `El subcampo ${field.label} de la fila ${item.label} tiene un calculo invalido.`,
               );
             }
           });
@@ -341,6 +633,8 @@ export default function GridTableBuilder() {
             typeText={typeText}
             importJsonText={importJsonText}
             importError={importError}
+            selectedCalculationTarget={selectedCalculationTarget}
+            fieldReferenceOptions={fieldReferenceOptions}
             onLabelTextChange={setLabelText}
             onTypeTextChange={setTypeText}
             onImportJsonTextChange={setImportJsonText}
@@ -349,6 +643,9 @@ export default function GridTableBuilder() {
             onAddRow={addCompositeRow}
             onGenerateJson={saveJson}
             onLoadJson={loadJson}
+            onUpdateCalculationOperation={updateCalculationOperation}
+            onToggleCalculationSource={toggleCalculationSource}
+            onClearCalculation={clearCalculation}
           />
 
           <GridTableCanvas
@@ -358,12 +655,14 @@ export default function GridTableBuilder() {
             items={items}
             rowDrafts={rowDrafts}
             openRowEditorId={openRowEditorId}
+            openCalculationTargetId={openCalculationTargetId}
             jsonPreview={jsonPreview}
             exportCount={structure.items.length}
             containerRef={containerRef}
             onLayoutChange={setLayout}
             onRemoveField={removeField}
             onToggleRowEditor={toggleRowEditor}
+            onToggleCalculationEditor={toggleCalculationEditor}
             onUpdateRowDraft={updateRowDraft}
             onAddFieldToRow={addFieldToRow}
             onRemoveRowChild={removeRowChild}

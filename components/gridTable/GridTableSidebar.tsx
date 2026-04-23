@@ -1,5 +1,20 @@
-import { FIELD_TYPE_OPTIONS } from "@/components/gridTable/gridTable.config";
-import type { FieldType } from "@/components/gridTable/gridTable.types";
+import {
+  CALCULATION_OPERATION_OPTIONS,
+  FIELD_TYPE_OPTIONS,
+} from "@/components/gridTable/gridTable.config";
+import type {
+  CalculationConfig,
+  CalculationOperation,
+  FieldReferenceOption,
+  FieldType,
+} from "@/components/gridTable/gridTable.types";
+
+type SelectedCalculationTarget = {
+  id: string;
+  label: string;
+  contextLabel: string;
+  calculation?: CalculationConfig;
+};
 
 type GridTableSidebarProps = {
   canAdd: boolean;
@@ -7,6 +22,8 @@ type GridTableSidebarProps = {
   typeText: FieldType;
   importJsonText: string;
   importError: string | null;
+  selectedCalculationTarget: SelectedCalculationTarget | null;
+  fieldReferenceOptions: FieldReferenceOption[];
   onLabelTextChange: (value: string) => void;
   onTypeTextChange: (value: FieldType) => void;
   onImportJsonTextChange: (value: string) => void;
@@ -15,6 +32,9 @@ type GridTableSidebarProps = {
   onAddRow: () => void;
   onGenerateJson: () => void;
   onLoadJson: () => void;
+  onUpdateCalculationOperation: (fieldId: string, operation: CalculationOperation) => void;
+  onToggleCalculationSource: (fieldId: string, sourceFieldId: string) => void;
+  onClearCalculation: (fieldId: string) => void;
 };
 
 export function GridTableSidebar({
@@ -23,6 +43,8 @@ export function GridTableSidebar({
   typeText,
   importJsonText,
   importError,
+  selectedCalculationTarget,
+  fieldReferenceOptions,
   onLabelTextChange,
   onTypeTextChange,
   onImportJsonTextChange,
@@ -31,6 +53,9 @@ export function GridTableSidebar({
   onAddRow,
   onGenerateJson,
   onLoadJson,
+  onUpdateCalculationOperation,
+  onToggleCalculationSource,
+  onClearCalculation,
 }: GridTableSidebarProps) {
   return (
     <aside className="rounded-2xl border border-slate-300 bg-slate-50 p-6 shadow-sm">
@@ -118,6 +143,94 @@ export function GridTableSidebar({
           >
             Generar JSON
           </button>
+        </div>
+
+        <div className="rounded-xl border border-slate-300 bg-white p-4">
+          <p className="text-sm font-semibold text-slate-900">Campos calculados</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Selecciona un campo desde el boton <span className="font-semibold">fx</span> en la
+            tablilla para configurar su formula aqui.
+          </p>
+
+          {selectedCalculationTarget ? (
+            <div className="mt-4 space-y-4">
+              <div className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-800">
+                  Campo objetivo
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {selectedCalculationTarget.label}
+                </p>
+                <p className="text-xs text-slate-600">{selectedCalculationTarget.contextLabel}</p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Operacion</label>
+                <select
+                  value={selectedCalculationTarget.calculation?.operation ?? "sum"}
+                  onChange={(event) =>
+                    onUpdateCalculationOperation(
+                      selectedCalculationTarget.id,
+                      event.target.value as CalculationOperation,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-cyan-700"
+                >
+                  {CALCULATION_OPERATION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-slate-700">Campos que participan</p>
+                <div className="max-h-56 space-y-2 overflow-auto rounded-xl border border-slate-300 bg-slate-50 p-3">
+                  {fieldReferenceOptions
+                    .filter((option) => option.id !== selectedCalculationTarget.id)
+                    .map((option) => {
+                      const isSelected =
+                        selectedCalculationTarget.calculation?.sourceFieldIds.includes(option.id) ??
+                        false;
+
+                      return (
+                        <label
+                          key={option.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-lg bg-white px-3 py-2 hover:bg-slate-100"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() =>
+                              onToggleCalculationSource(selectedCalculationTarget.id, option.id)
+                            }
+                            className="mt-0.5"
+                          />
+                          <span className="min-w-0 text-xs text-slate-700">
+                            <span className="block font-medium">{option.label}</span>
+                            <span className="block text-slate-500">{option.sourceLabel}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onClearCalculation(selectedCalculationTarget.id)}
+                className="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              >
+                Limpiar configuracion de calculo
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+              Ningun campo seleccionado. Pulsa <span className="font-semibold">fx</span> en un
+              campo o subcampo para configurar su comportamiento calculado.
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-slate-300 bg-white p-4">

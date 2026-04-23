@@ -1,6 +1,9 @@
 import type { Layout, LayoutItem } from "react-grid-layout";
 
-import type { FieldType } from "@/components/gridTable/gridTable.types";
+import type {
+  CalculationOperation,
+  FieldType,
+} from "@/components/gridTable/gridTable.types";
 
 export const GRID_COLUMNS = 12;
 export const GRID_ROWS = 12;
@@ -13,6 +16,18 @@ export const FIELD_TYPE_OPTIONS: Array<{ value: FieldType; label: string }> = [
   { value: "email", label: "Email" },
   { value: "tel", label: "Telefono" },
   { value: "list", label: "Lista" },
+];
+
+export const CALCULATION_OPERATION_OPTIONS: Array<{
+  value: CalculationOperation;
+  label: string;
+}> = [
+  { value: "sum", label: "Suma" },
+  { value: "subtract", label: "Resta" },
+  { value: "multiply", label: "Multiplicacion" },
+  { value: "divide", label: "Division" },
+  { value: "average", label: "Promedio" },
+  { value: "percent", label: "Porcentaje" },
 ];
 
 // Estos helpers definen el comportamiento base de cada tipo de bloque al crearse.

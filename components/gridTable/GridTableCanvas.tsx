@@ -19,12 +19,14 @@ type GridTableCanvasProps = {
   items: Record<string, FieldItem>;
   rowDrafts: Record<string, RowFieldDraft>;
   openRowEditorId: string | null;
+  openCalculationTargetId: string | null;
   jsonPreview: string;
   exportCount: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onLayoutChange: (nextLayout: Layout) => void;
   onRemoveField: (id: string) => void;
   onToggleRowEditor: (id: string) => void;
+  onToggleCalculationEditor: (targetId: string) => void;
   onUpdateRowDraft: (rowId: string, patch: Partial<RowFieldDraft>) => void;
   onAddFieldToRow: (rowId: string) => void;
   onRemoveRowChild: (rowId: string, childId: string) => void;
@@ -37,12 +39,14 @@ export function GridTableCanvas({
   items,
   rowDrafts,
   openRowEditorId,
+  openCalculationTargetId,
   jsonPreview,
   exportCount,
   containerRef,
   onLayoutChange,
   onRemoveField,
   onToggleRowEditor,
+  onToggleCalculationEditor,
   onUpdateRowDraft,
   onAddFieldToRow,
   onRemoveRowChild,
@@ -91,8 +95,10 @@ export function GridTableCanvas({
                     item={item}
                     rowDraft={rowDrafts[item.id]}
                     isRowEditorOpen={openRowEditorId === item.id}
+                    openCalculationTargetId={openCalculationTargetId}
                     onRemoveField={onRemoveField}
                     onToggleRowEditor={onToggleRowEditor}
+                    onToggleCalculationEditor={onToggleCalculationEditor}
                     onUpdateRowDraft={onUpdateRowDraft}
                     onAddFieldToRow={onAddFieldToRow}
                     onRemoveRowChild={onRemoveRowChild}

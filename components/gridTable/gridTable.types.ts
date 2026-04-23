@@ -1,11 +1,24 @@
 export type FieldType = "text" | "number" | "date" | "email" | "tel" | "list";
 export type BlockKind = "single" | "row" | "label";
+export type CalculationOperation =
+  | "sum"
+  | "subtract"
+  | "multiply"
+  | "divide"
+  | "average"
+  | "percent";
+
+export type CalculationConfig = {
+  operation: CalculationOperation;
+  sourceFieldIds: string[];
+};
 
 export type SingleFieldItem = {
   id: string;
   kind: "single";
   label: string;
   type: FieldType;
+  calculation?: CalculationConfig;
 };
 
 export type LabelFieldItem = {
@@ -18,6 +31,7 @@ export type RowChildField = {
   id: string;
   label: string;
   type: FieldType;
+  calculation?: CalculationConfig;
 };
 
 export type RowCompositeItem = {
@@ -45,9 +59,16 @@ export type SavedStructure = {
     label: string;
     type?: FieldType;
     fields?: RowChildField[];
+    calculation?: CalculationConfig;
     x: number;
     y: number;
     w: number;
     h: number;
   }>;
+};
+
+export type FieldReferenceOption = {
+  id: string;
+  label: string;
+  sourceLabel: string;
 };
