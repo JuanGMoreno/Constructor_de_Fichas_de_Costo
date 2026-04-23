@@ -141,7 +141,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-800">
               Label
             </p>
-            <p className="mt-2 break-words text-sm font-semibold text-slate-900">{item.label}</p>
+            <p className="mt-2 wrap-break-word text-sm font-semibold text-slate-900">{item.label}</p>
           </div>
           <button
             type="button"
