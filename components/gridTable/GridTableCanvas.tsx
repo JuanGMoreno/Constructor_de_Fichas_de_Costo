@@ -81,7 +81,7 @@ export function GridTableCanvas({
               margin: [8, 8],
               containerPadding: [8, 8],
             }}
-            className="min-h-[680px] overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white"
+            className="min-h-170 overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white"
           >
             {layout.map((slot) => {
               // `layout` guarda la geometria del bloque, mientras `items` guarda su contenido.

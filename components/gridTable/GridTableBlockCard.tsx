@@ -84,7 +84,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
     );
   };
 
-  const renderCalculationButton = (targetId: string, hasCalculation: boolean) => {
+  const renderCalculationButton = (targetId: string) => {
     const isSelected = openCalculationTargetId === targetId;
 
     return (
@@ -92,7 +92,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
         type="button"
         onClick={() => onToggleCalculationEditor(targetId)}
         className={`inline-flex h-6 items-center justify-center rounded-md border px-2 text-[10px] font-semibold ${
-          isSelected || hasCalculation
+          isSelected 
             ? "border-cyan-300 bg-cyan-50 text-cyan-800 hover:bg-cyan-100"
             : "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100"
         }`}
@@ -110,7 +110,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
         className="relative h-auto w-52 min-w-52 flex-none rounded-md border border-slate-200 bg-slate-50 p-2"
       >
         <div className="absolute right-1 top-1 flex items-center gap-1">
-          {renderCalculationButton(field.id, Boolean(field.calculation))}
+          {renderCalculationButton(field.id)}
           <button
             type="button"
             onClick={() => onRemoveRowChild(item.id, field.id)}
@@ -176,7 +176,7 @@ export const GridTableBlockCard = memo(function GridTableBlockCard({
           {item.kind === "single" && (
             <>
               {renderCalculationBadge(item.calculation)}
-              {renderCalculationButton(item.id, Boolean(item.calculation))}
+              {renderCalculationButton(item.id)}
             </>
           )}
           {item.kind === "row" && (
