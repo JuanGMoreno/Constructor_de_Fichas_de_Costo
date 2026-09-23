@@ -1,279 +1,61 @@
-# Cost Token Builder
+# Constructor de Fichas de Costo | Cost Token Builder
 
-Constructor visual para definir la estructura JSON de una ficha de costo. La aplicacion permite disenar bloques libres sobre una rejilla, exportar la estructura generada y volver a importarla para reconstruir el diseno.
+Editor visual para diseñar la estructura de una ficha de costo sin imponer una plantilla única. Permite colocar bloques en un lienzo, definir tipos de dato y relaciones de cálculo, y exportar el resultado como JSON. Al importar ese JSON, la aplicación reconstruye el diseño para seguir editándolo.
 
-## Objetivo del proyecto
+## Vista previa
 
-El proyecto existe para resolver un problema muy concreto: muchas empresas no trabajan con una ficha de costo unica o estandar. En lugar de obligarlas a usar una plantilla fija, esta herramienta permite construir visualmente la estructura de la ficha y guardar ese resultado como JSON.
+> Captura pendiente de añadir: una vista del lienzo con varios tipos de bloques y el panel lateral de configuración. No hay aún una imagen de la aplicación versionada en este repositorio.
 
-Ese JSON no representa solo la posicion de los elementos, sino tambien:
+## Para qué sirve
 
-- el tipo de bloque
-- el tipo de dato esperado
-- la composicion de filas con subcampos
-- y la definicion de campos calculados
+Distintas empresas organizan sus costos de formas diferentes. Esta herramienta se concentra en **definir la estructura** de una ficha —campos, posiciones, agrupaciones y cálculos declarativos— para que otro sistema pueda interpretarla más adelante.
 
-La idea es que otro sistema, mas adelante, consuma este JSON para renderizar o ejecutar la ficha de costo final.
+1. Agrega campos individuales, etiquetas o filas compuestas con subcampos.
+2. Mueve y redimensiona bloques sobre una rejilla.
+3. Asigna tipos de dato como texto, número, fecha, correo, teléfono o lista.
+4. Configura operaciones y selecciona los campos que participan en ellas.
+5. Exporta el diseño a JSON o importa un JSON compatible para recuperarlo.
 
-## Stack tecnico
+**Alcance actual:** el editor guarda la *definición* de los cálculos, pero no ejecuta las fórmulas ni produce una ficha final con importes calculados. No dispone de backend ni persistencia remota.
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- react-grid-layout
+## Tecnologías
 
-## Comandos principales
+Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 y `react-grid-layout`.
 
-```bash
-npm install
-npm run dev
-npm run lint
-npm run build
-npm run start
+## Cómo está organizado
+
+La interfaz mantiene dos representaciones relacionadas:
+
+- `layout`: posición y tamaño de los bloques en la rejilla.
+- `items`: tipo y contenido semántico de cada bloque.
+
+Al exportar, combina ambas representaciones y ordena los bloques según su posición visual. Al importar, valida la estructura recibida y reconstruye `layout`, `items` y los borradores de filas; una entrada inválida muestra un error sin romper la página.
+
+```text
+app/page.tsx                             Entrada de la aplicación
+components/gridTable/gridTable.tsx      Estado y coordinación del editor
+components/gridTable/gridTable.types.ts Tipos de bloques y del JSON
+components/gridTable/gridTable.config.ts Configuración de rejilla y opciones
+components/gridTable/GridTableCanvas.tsx Lienzo interactivo
+components/gridTable/GridTableSidebar.tsx Creación, importación y configuración
+components/gridTable/GridTableJsonPreview.tsx Vista del JSON generado
 ```
 
-## Funcionamiento general
+### Bloques y cálculos
 
-La aplicacion trabaja con dos representaciones internas:
+Los bloques pueden ser campos individuales, etiquetas visuales o filas compuestas. Un campo individual o subcampo puede declarar una operación `sum`, `subtract`, `multiply`, `divide`, `average` o `percent` y referenciar otros campos por ID. Si se elimina una fuente, el editor retira su referencia de las configuraciones dependientes.
 
-- `layout`: describe la geometria del grid
-- `items`: describe el contenido semantico de los bloques
+Esta separación evita mezclar el editor visual con la futura ejecución de reglas de negocio: aquí se describe *qué calcular*, no se calcula el valor.
 
-El grid visual se dibuja combinando ambas estructuras.
+## Referencia técnica
 
-Cuando exportas:
+### Modelo y flujo de datos
 
-- `layout + items -> JSON`
+Al crear un bloque, el editor genera un ID y añade su contenido a `items` y su geometría a `layout`. El lienzo combina ambas estructuras para renderizarlo. La exportación ordena las posiciones de arriba hacia abajo y después de izquierda a derecha, y guarda el resultado como `SavedStructure`.
 
-Cuando importas:
+La importación verifica que existan los elementos esperados y valida, entre otros datos, el tipo de bloque, el tipo de campo, las coordenadas y la configuración de cálculos. Si el JSON es compatible, reconstruye el estado del editor; si no, muestra un error sin descartar la interfaz.
 
-- `JSON -> layout + items`
-
-Ese diseno hace que el constructor sea flexible y que la interfaz no dependa directamente del JSON para renderizar.
-
-## Tipos de bloques disponibles
-
-### 1. Campo individual
-
-Representa un campo simple dentro de la ficha.
-
-Ejemplos:
-
-- Producto
-- Codigo
-- Unidad de medida
-- Fecha
-
-Tipos de dato soportados:
-
-- `text`
-- `number`
-- `date`
-- `email`
-- `tel`
-- `list`
-
-### 2. Label
-
-Es un bloque puramente visual. Sirve para:
-
-- titulos
-- subtitulos
-- nombres de seccion
-- encabezados institucionales
-
-No almacena valor, solo estructura y posicion.
-
-### 3. Fila compuesta
-
-Es un contenedor que agrupa subcampos dentro de un mismo bloque visual.
-
-Sirve para modelar conceptos como:
-
-- costo de material
-- combustibles y lubricantes
-- salarios directos
-
-Cada fila puede contener varios subcampos con sus propios tipos y configuraciones.
-
-## Campos calculados
-
-El constructor soporta campos calculados tanto en:
-
-- campos individuales
-- subcampos dentro de una fila compuesta
-
-La configuracion del calculo se realiza desde el panel lateral.
-
-Cada campo calculado puede definir:
-
-- operacion
-- lista de campos fuente que participan
-
-Operaciones soportadas:
-
-- `sum`
-- `subtract`
-- `multiply`
-- `divide`
-- `average`
-- `percent`
-
-### Como funciona visualmente
-
-Cada campo o subcampo tiene un boton `fx`.
-
-Cuando pulsas ese boton:
-
-- el campo queda seleccionado como objetivo del calculo
-- el panel lateral muestra su configuracion
-- puedes elegir la operacion
-- puedes marcar los campos que participan en el calculo
-
-### Importante
-
-En esta aplicacion no se ejecuta la formula como tal. Aqui solo se define la estructura y el comportamiento esperado para que otro sistema lo use mas adelante.
-
-## Importacion y exportacion de JSON
-
-### Exportacion
-
-La aplicacion genera un JSON estructurado con:
-
-- configuracion del grid
-- lista ordenada de bloques
-- posicion y tamano de cada bloque
-- configuracion de subcampos
-- configuracion de calculos
-
-El orden exportado respeta el orden visual del lienzo:
-
-- primero de arriba hacia abajo
-- luego de izquierda a derecha
-
-### Importacion
-
-Tambien es posible pegar un JSON compatible para reconstruir la tablilla.
-
-Durante la importacion se valida:
-
-- la existencia de `items`
-- el tipo de bloque
-- las coordenadas del grid
-- el tipo de dato
-- la estructura de calculos
-
-Si el JSON no es valido, la interfaz muestra el error sin romper la pagina.
-
-## Estructura del modulo principal
-
-La logica del constructor esta separada en varios archivos:
-
-### `components/gridTable/gridTable.tsx`
-
-Es el orquestador principal.
-
-Responsabilidades:
-
-- manejar estados
-- crear y eliminar bloques
-- agregar y quitar subcampos
-- exportar JSON
-- importar JSON
-- administrar configuracion de calculos
-
-### `components/gridTable/gridTable.types.ts`
-
-Define todos los tipos TypeScript del constructor.
-
-Aqui viven:
-
-- tipos de bloque
-- tipos de campo
-- tipos de calculo
-- estructura del JSON exportado
-
-### `components/gridTable/gridTable.config.ts`
-
-Contiene configuracion reutilizable.
-
-Por ejemplo:
-
-- columnas y filas del grid
-- opciones de tipos de dato
-- opciones de operaciones
-- helpers de layout por tipo de bloque
-
-### `components/gridTable/GridTableSidebar.tsx`
-
-Renderiza el panel lateral.
-
-Responsabilidades:
-
-- crear nuevos bloques
-- exportar JSON
-- importar JSON
-- configurar campos calculados
-
-### `components/gridTable/GridTableCanvas.tsx`
-
-Renderiza el lienzo con `react-grid-layout`.
-
-Responsabilidades:
-
-- mostrar el grid
-- pintar los bloques
-- sincronizar posiciones y tamanos
-
-### `components/gridTable/GridTableBlockCard.tsx`
-
-Renderiza cada bloque individual del grid.
-
-Responsabilidades:
-
-- mostrar labels
-- mostrar campos individuales
-- mostrar filas compuestas
-- renderizar subcampos
-- permitir seleccionar el objetivo de calculo
-
-### `components/gridTable/GridTableJsonPreview.tsx`
-
-Muestra el JSON generado en pantalla.
-
-## Flujo de datos
-
-### Crear un bloque
-
-1. El usuario escribe un nombre y elige un tipo de dato.
-2. Pulsa uno de los botones de creacion.
-3. La app crea un id unico.
-4. Se guarda contenido en `items`.
-5. Se guarda geometria en `layout`.
-6. El grid se renderiza automaticamente.
-
-### Exportar
-
-1. Se toma `layout`.
-2. Se toma `items`.
-3. Se ordena segun posicion visual.
-4. Se fusiona todo en un objeto `SavedStructure`.
-5. Se convierte a JSON y se muestra.
-
-### Importar
-
-1. El usuario pega un JSON.
-2. La app lo parsea.
-3. Valida formato y tipos.
-4. Reconstruye `layout`.
-5. Reconstruye `items`.
-6. Reconstruye `rowDrafts`.
-7. El grid vuelve a dibujarse.
-
-## Formato general del JSON
-
-Ejemplo simplificado:
+Un ejemplo simplificado del formato exportado:
 
 ```json
 {
@@ -314,75 +96,54 @@ Ejemplo simplificado:
       "y": 2,
       "w": 6,
       "h": 2
+    },
+    {
+      "id": "field_3",
+      "label": "Materiales",
+      "kind": "single",
+      "type": "number",
+      "x": 0,
+      "y": 4,
+      "w": 6,
+      "h": 2
+    },
+    {
+      "id": "field_4",
+      "label": "Mano de obra",
+      "kind": "single",
+      "type": "number",
+      "x": 6,
+      "y": 4,
+      "w": 6,
+      "h": 2
     }
   ]
 }
 ```
 
-## Decisiones de implementacion importantes
+### Decisiones de implementación
 
-### 1. El grid no renderiza directamente desde el JSON
+- **Estado intermedio, no JSON como vista:** el lienzo utiliza `layout` e `items` durante la edición; el JSON es un formato de intercambio. Así se pueden mover y cambiar bloques sin reconstruir el documento en cada interacción.
+- **Cálculos declarativos:** un campo puede referenciar por ID a otros campos o subcampos, pero el editor no ejecuta la operación. Esto deja la interpretación a un sistema posterior.
+- **Referencias globales:** un campo puede tomar fuentes de cualquier parte de la ficha, excepto de sí mismo.
+- **Limpieza al eliminar:** al quitar un campo, sus referencias se retiran de las configuraciones de cálculo que dependían de él.
 
-Se usa un modelo intermedio porque facilita:
+## Ejecutar en local
 
-- mover bloques
-- editar contenido
-- validar cambios
-- importar y exportar
+Necesitas Node.js y npm. No se requiere base de datos ni variables de entorno para el editor actual.
 
-### 2. Los calculos se definen, pero no se ejecutan
+```bash
+git clone https://github.com/JuanGMoreno/Constructor_de_Fichas_de_Costo.git
+cd Constructor_de_Fichas_de_Costo
+npm install
+npm run dev
+```
 
-Esto mantiene el constructor enfocado en disenar estructura, no en resolver logica de negocio final.
-
-### 3. Las referencias de calculo son globales
-
-Un campo puede tomar como fuente cualquier otro campo o subcampo de la ficha, excepto a si mismo.
-
-### 4. Se limpian referencias cuando se elimina un campo
-
-Si un campo usado en una formula desaparece, sus ids se eliminan automaticamente de otras configuraciones de calculo para no dejar referencias rotas.
-
-## Estado actual del proyecto
-
-Actualmente el constructor permite:
-
-- crear labels
-- crear campos simples
-- crear filas compuestas
-- mover y redimensionar bloques
-- usar tipo `list`
-- definir campos calculados
-- exportar JSON
-- importar JSON
-- reconstruir la tablilla desde un JSON valido
-
-## Posibles siguientes pasos
-
-Ideas naturales para evolucionar el proyecto:
-
-- soporte para formulas mas complejas
-- editor de condiciones o reglas
-- persistencia en backend
-- exportacion a Excel
-- plantillas predefinidas
-- integracion real con nomencladores para campos `list`
-- vista previa de una ficha final basada en el JSON
-
-## Notas para desarrollo
-
-- `next-env.d.ts` es generado por Next.js y no debe editarse manualmente.
-- Si en algun momento se renombran rutas del App Router y aparecen errores raros de tipos, conviene limpiar `.next`.
-- El proyecto no tiene runner de tests configurado todavia.
-
-## Validacion recomendada antes de cerrar cambios
+Abre [http://localhost:3000](http://localhost:3000). Para comprobar el proyecto:
 
 ```bash
 npm run lint
 npm run build
 ```
 
-## Nombre del proyecto
-
-El repositorio local ya existia cuando se trabajo sobre el proyecto, asi que no fue necesario crear uno nuevo. El nombre de referencia usado para la documentacion es:
-
-- `Cost Token Builder`
+Todavía no hay un runner de pruebas configurado ni una demo pública asociada a este repositorio.
