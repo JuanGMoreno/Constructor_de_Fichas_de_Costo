@@ -4,7 +4,7 @@ Editor visual para diseñar la estructura de una ficha de costo sin imponer una 
 
 ## Vista previa
 
-> Captura pendiente de añadir: una vista del lienzo con varios tipos de bloques y el panel lateral de configuración. No hay aún una imagen de la aplicación versionada en este repositorio.
+![Vista previa del constructor](public/preview.png)
 
 ## Para qué sirve
 
